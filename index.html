@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQUAD STAT — Real-Time Sports Telemetry & Actuarial Match Intelligence</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#111827',
+                            900: '#0b1120',
+                            950: '#060913',
+                        },
+                        emerald: {
+                            450: '#10b981',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #060913;
+            color: #e2e8f0;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b1120;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.55);
+        }
+        .glass-sub {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(71, 85, 105, 0.35);
+        }
+        input[type="range"] {
+            accent-color: #10b981;
+        }
+        .matrix-cell {
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .matrix-cell:hover {
+            transform: scale(1.06);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2.5s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 pb-12">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 glass-card border-b border-slate-800/80 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand Identity -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-chart-network text-slate-950 text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-extrabold tracking-tight text-white">SQUAD <span class="text-emerald-400">STAT</span></h1>
+                        <span class="px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full">v2.4 PROD</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Actuarial Dixon-Coles &bull; Separated &alpha;/&beta; &bull; Non-Homogeneous In-Play Engine</p>
+                </div>
+            </div>
+
+            <!-- Live API Status & Action Controls -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <div id="apiStatusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs font-mono">
+                    <span id="apiDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span id="apiStatusText" class="text-slate-300">ESPN Telemetry: Ready</span>
+                </div>
+
+                <button onclick="runMonteCarloSimulation(10000, true)" class="px-3.5 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-dice"></i>
+                    <span>10K Monte Carlo</span>
+                </button>
+
+                <button onclick="toggleModal('diagnosticsModal')" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>Arsitektur Rumus</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 lg:px-8 pt-6 space-y-6">
+
+        <!-- TOP TELEMETRY & LEAGUE FIXTURE BAR -->
+        <section class="glass-card rounded-2xl p-4 sm:p-5">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                <!-- League Selector -->
+                <div class="lg:col-span-3">
+                    <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
+                        <i class="fa-solid fa-globe text-emerald-400 mr-1"></i> Kompetisi & Baseline Liga (&mu;)
+                    </label>
+                    <select id="leagueSelect" onchange="handleLeagueChange()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+                        <option value="eng.1">Premier League (ENG) — &mu; 2.88 Gol</option>
+                        <option value="esp.1">LaLiga Santander (ESP) — &mu; 2.62 Gol</option>
+                        <option value="ita.1">Serie A (ITA) — &mu; 2.68 Gol</option>
+                        <option value="ger.1">Bundesliga (GER) — &mu; 3.14 Gol</option>
+                        <option value="fra.1">Ligue 1 (FRA) — &mu; 2.74 Gol</option>
+                        <option value="uefa.champions">UEFA Champions League — &mu; 2.96 Gol</option>
+                    </select>
+                </div>
+
+                <!-- Live ESPN Fixture Selector -->
+                <div class="lg:col-span-5">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+                            <i class="fa-solid fa-satellite-dish text-cyan-400 mr-1"></i> Jadwal Live ESPN API / Preset Matchup
+                        </label>
+                        <button onclick="fetchESPNFixtures()" class="text-[11px] text-emerald-400 hover:underline font-mono flex items-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> Sync Live API
+                        </button>
+                    </div>
+                    <select id="fixtureSelect" onchange="handleFixtureSelection()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition">
+                        <option value="">-- Memuat Jadwal & Klub Telemetry --</option>
+                    </select>
+                </div>
+
+                <!-- League Base Parameters Info -->
+                <div class="lg:col-span-4 grid grid-cols-3 gap-2">
+                    <div class="glass-sub rounded-xl p-2.5 text-center">
+                        <div class="text-[10px] font-mono uppercase text-slate-400">Home Base (&mu;<sub>H</sub>)</div>
+                        <div id="leagueMuHome" class="text-base font-mono font-bold text-emerald-400 mt-0.5">1.58</div>
+                        <div class="text-[10px] text-slate-500">Gol/Laga</div>
+                    </div>
+                    <div class="glass-sub rounded-xl p-2.5 text-center">
+                        <div class="text-[10px] font-mono uppercase text-slate-400">Away Base (&mu;<sub>A</sub>)</div>
+                        <div id="leagueMuAway" class="text-base font-mono font-bold text-cyan-400 mt-0.5">1.30</div>
+                        <div class="text-[10px] text-slate-500">Gol/Laga</div>
+                    </div>
+                    <div class="glass-sub rounded-xl p-2.5 text-center">
+                        <div class="text-[10px] font-mono uppercase text-slate-400">DC Rho (&rho;)</div>
+                        <div id="activeRhoBadge" class="text-base font-mono font-bold text-indigo-400 mt-0.5">-0.13</div>
+                        <div class="text-[10px] text-slate-500">Clamped &tau;&ge;0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN WORKSPACE GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: TEAM TELEMETRY, CONTEXTUAL MATRIX & IN-PLAY ENGINE (5 COLS) -->
+            <div class="lg:col-span-5 space-y-6">
+
+                <!-- 1. TEAM SELECTION & SEPARATED ALPHA/BETA INSPECTOR -->
+                <div class="glass-card rounded-2xl p-5 space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-white">1. Klub & Separated &alpha; / &beta; Telemetry</h2>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400">Time-Decayed xG</span>
+                    </div>
+
+                    <!-- HOME vs AWAY SELECTORS -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Home Team Card -->
+                        <div class="glass-sub rounded-xl p-3.5 border-l-4 border-l-emerald-500 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Tuan Rumah (Home)</span>
+                                <span id="homeEloDisplay" class="text-xs font-mono text-slate-400">Elo: 1915</span>
+                            </div>
+                            <select id="homeTeamSelect" onchange="handleTeamChange('home')" class="w-full bg-slate-950/90 border border-slate-700 rounded-lg px-2.5 py-2 text-sm font-semibold text-white focus:border-emerald-500 focus:outline-none"></select>
+
+                            <!-- Alpha & Beta Sliders/Inputs -->
+                            <div class="space-y-2 pt-1">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Attack Strength (&alpha;<sub>H</sub>)</span>
+                                        <span id="homeAlphaVal" class="font-mono font-bold text-emerald-400">1.28</span>
+                                    </div>
+                                    <input id="homeAlphaSlider" type="range" min="0.50" max="2.00" step="0.01" value="1.28" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Defense Weakness (&beta;<sub>H</sub>)</span>
+                                        <span id="homeBetaVal" class="font-mono font-bold text-amber-400">0.82</span>
+                                    </div>
+                                    <input id="homeBetaSlider" type="range" min="0.45" max="1.85" step="0.01" value="0.82" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                    <p class="text-[10px] text-slate-500 mt-0.5">*&beta; &lt; 1.00 = Pertahanan kuat (sulit ditembus)</p>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Synthetic xG / 90m</span>
+                                        <span id="homeXgVal" class="font-mono font-bold text-white">1.92</span>
+                                    </div>
+                                    <input id="homeXgSlider" type="range" min="0.50" max="3.50" step="0.02" value="1.92" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Away Team Card -->
+                        <div class="glass-sub rounded-xl p-3.5 border-l-4 border-l-cyan-500 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">Tim Tamu (Away)</span>
+                                <span id="awayEloDisplay" class="text-xs font-mono text-slate-400">Elo: 1870</span>
+                            </div>
+                            <select id="awayTeamSelect" onchange="handleTeamChange('away')" class="w-full bg-slate-950/90 border border-slate-700 rounded-lg px-2.5 py-2 text-sm font-semibold text-white focus:border-cyan-500 focus:outline-none"></select>
+
+                            <!-- Alpha & Beta Sliders/Inputs -->
+                            <div class="space-y-2 pt-1">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Attack Strength (&alpha;<sub>A</sub>)</span>
+                                        <span id="awayAlphaVal" class="font-mono font-bold text-cyan-400">1.18</span>
+                                    </div>
+                                    <input id="awayAlphaSlider" type="range" min="0.50" max="2.00" step="0.01" value="1.18" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Defense Weakness (&beta;<sub>A</sub>)</span>
+                                        <span id="awayBetaVal" class="font-mono font-bold text-amber-400">0.91</span>
+                                    </div>
+                                    <input id="awayBetaSlider" type="range" min="0.45" max="1.85" step="0.01" value="0.91" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                    <p class="text-[10px] text-slate-500 mt-0.5">*&beta; &gt; 1.00 = Pertahanan rapuh</p>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-400">Synthetic xG / 90m</span>
+                                        <span id="awayXgVal" class="font-mono font-bold text-white">1.58</span>
+                                    </div>
+                                    <input id="awayXgSlider" type="range" min="0.50" max="3.50" step="0.02" value="1.58" oninput="handleManualStatChange()" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Synthetic xG Estimator Accordion -->
+                    <div class="glass-sub rounded-xl p-3">
+                        <button onclick="toggleElement('synthXgPanel')" class="w-full flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-white">
+                            <span><i class="fa-solid fa-wand-magic-sparkles text-indigo-400 mr-1.5"></i> Kalkulator Synthetic xG dari Statistik ESPN (Shots & SoT)</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                        </button>
+                        <div id="synthXgPanel" class="hidden mt-3 pt-3 border-t border-slate-700/60 space-y-3 text-xs">
+                            <p class="text-slate-400 leading-relaxed">
+                                Jika API tidak menyediakan xG murni, Squad Stat mengestimasi <strong>Synthetic xG</strong> menggunakan rumus regresi tembakan: <code class="text-emerald-300">xG &approx; (SoT &times; 0.29) + ((Shots - SoT) &times; 0.04) + ((Poss% - 50) &times; 0.008)</code>.
+                            </p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-slate-900/80 p-2.5 rounded-lg space-y-1.5">
+                                    <div class="font-semibold text-emerald-400">Home Raw Telemetry</div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Total Shots / 90:</span>
+                                        <input id="homeRawShots" type="number" step="0.5" value="15.2" oninput="applySyntheticXg('home')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Shots on Target:</span>
+                                        <input id="homeRawSot" type="number" step="0.2" value="5.6" oninput="applySyntheticXg('home')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Possession (%):</span>
+                                        <input id="homeRawPoss" type="number" step="1" value="57" oninput="applySyntheticXg('home')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                </div>
+                                <div class="bg-slate-900/80 p-2.5 rounded-lg space-y-1.5">
+                                    <div class="font-semibold text-cyan-400">Away Raw Telemetry</div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Total Shots / 90:</span>
+                                        <input id="awayRawShots" type="number" step="0.5" value="12.8" oninput="applySyntheticXg('away')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Shots on Target:</span>
+                                        <input id="awayRawSot" type="number" step="0.2" value="4.5" oninput="applySyntheticXg('away')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span>Possession (%):</span>
+                                        <input id="awayRawPoss" type="number" step="1" value="43" oninput="applySyntheticXg('away')" class="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. POSITIONAL & TACTICAL IMPACT MATRIX (DAMPED LOG-ADDITIVE) -->
+                <div class="glass-card rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-chess-board text-cyan-400"></i>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-white">2. Positional & Tactical Impact Matrix</h2>
+                        </div>
+                        <span class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] font-mono">tanh() Damped</span>
+                    </div>
+
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Berbeda dari model lama yang mengalikan persentase kasar, matriks ini memodifikasi parameter <strong>Serangan (&alpha;)</strong> dan <strong>Pertahanan (&beta;)</strong> secara spesifik posisi dengan fungsi redaman <em>hyperbolic tangent</em> agar tidak terjadi <em>compounding error</em>.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        <!-- Home Availability -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Kondisi Skuad Home</label>
+                            <select id="homeSquadState" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                                <option value="full">Full Strength (&alpha; 0%, &beta; 0%)</option>
+                                <option value="striker_out">Striker / Creator Absen (&alpha;<sub>H</sub> -13%)</option>
+                                <option value="cb_gk_out">Center-Back / Kiper Absen (&beta;<sub>H</sub> +16% / Lawan +)</option>
+                                <option value="pivot_out">Gelandang Pivot Absen (&alpha;<sub>H</sub> -6%, &beta;<sub>H</sub> +9%)</option>
+                                <option value="crisis">Krisis Cedera Parah (&alpha;<sub>H</sub> -15%, &beta;<sub>H</sub> +18%)</option>
+                            </select>
+                        </div>
+
+                        <!-- Away Availability -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Kondisi Skuad Away</label>
+                            <select id="awaySquadState" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-cyan-500 focus:outline-none">
+                                <option value="full">Full Strength (&alpha; 0%, &beta; 0%)</option>
+                                <option value="striker_out">Striker / Creator Absen (&alpha;<sub>A</sub> -13%)</option>
+                                <option value="cb_gk_out">Center-Back / Kiper Absen (&beta;<sub>A</sub> +16% / Lawan +)</option>
+                                <option value="pivot_out">Gelandang Pivot Absen (&alpha;<sub>A</sub> -6%, &beta;<sub>A</sub> +9%)</option>
+                                <option value="crisis">Krisis Cedera Parah (&alpha;<sub>A</sub> -15%, &beta;<sub>A</sub> +18%)</option>
+                            </select>
+                        </div>
+
+                        <!-- Home Tactical Approach -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Taktik & Garis Pertahanan Home</label>
+                            <select id="homeTactic" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                                <option value="balanced">Balanced / Possession Normal</option>
+                                <option value="high_press">High Press / Gegenpress (&alpha;<sub>H</sub> +11%, &beta;<sub>H</sub> +9%)</option>
+                                <option value="low_block">Low Block / Park the Bus (&alpha;<sub>H</sub> -14%, &beta;<sub>H</sub> -15%)</option>
+                                <option value="wings">Fluid Attacking Overload (&alpha;<sub>H</sub> +14%, &beta;<sub>H</sub> +12%)</option>
+                            </select>
+                        </div>
+
+                        <!-- Away Tactical Approach -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Taktik & Garis Pertahanan Away</label>
+                            <select id="awayTactic" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-cyan-500 focus:outline-none">
+                                <option value="balanced">Balanced / Transition Normal</option>
+                                <option value="high_press">High Press / Gegenpress (&alpha;<sub>A</sub> +11%, &beta;<sub>A</sub> +9%)</option>
+                                <option value="low_block">Low Block / Counter (&alpha;<sub>A</sub> -12%, &beta;<sub>A</sub> -16%)</option>
+                                <option value="wings">All-Out Must Win (&alpha;<sub>A</sub> +14%, &beta;<sub>A</sub> +13%)</option>
+                            </select>
+                        </div>
+
+                        <!-- Rest & Fatigue Differential -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Keunggulan Istirahat (Rest Days)</label>
+                            <select id="restState" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-indigo-500 focus:outline-none">
+                                <option value="equal">Seimbang (&ge; 4 Hari Istirahat)</option>
+                                <option value="home_tired">Home Kelelahan &lt;72 Jam (Jadwal Padat Eropa)</option>
+                                <option value="away_tired">Away Kelelahan &lt;72 Jam + Perjalanan Jauh</option>
+                                <option value="both_tired">Kedua Tim Kelelahan &lt;72 Jam</option>
+                            </select>
+                        </div>
+
+                        <!-- Weather & Pitch Condition -->
+                        <div>
+                            <label class="block text-slate-300 font-medium mb-1">Kondisi Cuaca & Lapangan</label>
+                            <select id="weatherState" onchange="recalculateModel()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-white focus:border-indigo-500 focus:outline-none">
+                                <option value="ideal">Ideal / Slick Pitch (+2% Pace)</option>
+                                <option value="wet_fast">Hujan Ringan — Bola Cepat (+4% &lambda;, +Error)</option>
+                                <option value="heavy_rain">Hujan Deras / Genangan Air (-10% &lambda;, High &rho;)</option>
+                                <option value="strong_wind">Angin Kencang (-7% Long Ball Accuracy)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Damping Audit Pill -->
+                    <div class="glass-sub rounded-xl p-3 flex items-center justify-between text-xs font-mono">
+                        <span class="text-slate-400">Net Damped Modifier:</span>
+                        <div class="flex gap-3">
+                            <span id="dampedModHome" class="text-emerald-400">Home: +0.0%</span>
+                            <span class="text-slate-600">|</span>
+                            <span id="dampedModAway" class="text-cyan-400">Away: +0.0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CONTINUOUS NON-HOMOGENEOUS IN-PLAY ENGINE -->
+                <div class="glass-card rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-stopwatch-20 text-rose-400"></i>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-white">3. Continuous Non-Homogeneous In-Play</h2>
+                        </div>
+                        <span id="inPlayBadge" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono">PRE-MATCH (0')</span>
+                    </div>
+
+                    <!-- Minute Slider 0 - 90 -->
+                    <div>
+                        <div class="flex justify-between items-center text-xs mb-1.5">
+                            <span class="text-slate-300 font-medium">Menit Pertandingan Berjalan (<code class="text-rose-400">t</code>)</span>
+                            <span id="liveMinuteVal" class="font-mono font-bold text-sm text-rose-400">0' (Pre-Match)</span>
+                        </div>
+                        <input id="liveMinuteSlider" type="range" min="0" max="89" step="1" value="0" oninput="recalculateModel()" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                            <span>0' Kickoff</span>
+                            <span>25'</span>
+                            <span>45' HT</span>
+                            <span>65'</span>
+                            <span>75' Late Surge</span>
+                            <span>89'</span>
+                        </div>
+                    </div>
+
+                    <!-- Live Score & Red Card Controls -->
+                    <div class="grid grid-cols-3 gap-3 pt-1">
+                        <!-- Live Home Goals -->
+                        <div class="glass-sub rounded-xl p-2.5 text-center">
+                            <span class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Skor Home</span>
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="adjustLiveScore('home', -1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">-</button>
+                                <span id="liveScoreHome" class="font-mono font-bold text-lg text-emerald-400">0</span>
+                                <button onclick="adjustLiveScore('home', 1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Live Away Goals -->
+                        <div class="glass-sub rounded-xl p-2.5 text-center">
+                            <span class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Skor Away</span>
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="adjustLiveScore('away', -1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">-</button>
+                                <span id="liveScoreAway" class="font-mono font-bold text-lg text-cyan-400">0</span>
+                                <button onclick="adjustLiveScore('away', 1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Red Cards Markov State -->
+                        <div class="glass-sub rounded-xl p-2.5 flex flex-col justify-between">
+                            <span class="block text-[10px] font-mono uppercase text-slate-400 text-center">Kartu Merah</span>
+                            <select id="redCardState" onchange="recalculateModel()" class="w-full bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-[11px] font-mono text-white focus:outline-none">
+                                <option value="11v11">11 vs 11 (Normal)</option>
+                                <option value="10v11">Home Red (10v11)</option>
+                                <option value="11v10">Away Red (11v10)</option>
+                                <option value="10v10">Both Red (10v10)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Non-Linear Time Weight Info -->
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+                        <span>Sisa Proporsi Intensitas Gol (<span class="text-white">W<sub>rem</sub></span>):</span>
+                        <span id="remainingIntensityText" class="text-rose-400 font-bold">100.0% (Weibull Adjusted)</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: OUTPUT DASHBOARD, 11x11 MATRIX, MODEL DELTA & EV CALCULATOR (7 COLS) -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- 1. HERO EXPECTED GOALS (LAMBDA) & 1X2 PROBABILITY BANNER -->
+                <div class="glass-card rounded-2xl p-5 sm:p-6 space-y-6 relative overflow-hidden">
+                    <!-- Subtle decorative glow -->
+                    <div class=" -top-24 -right-24 w-56 h-56 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none hidden"></div>
+
+                    <!-- Matchup Header & Lambda Display -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-center">
+                        <!-- Home Team Summary -->
+                        <div class="glass-sub rounded-2xl p-4 border border-emerald-500/25">
+                            <div class="text-xs font-mono uppercase text-emerald-400 tracking-wider">Tuan Rumah</div>
+                            <h3 id="displayHomeName" class="text-lg font-extrabold text-white truncate mt-0.5">Arsenal</h3>
+                            <div class="mt-3 flex items-baseline justify-center gap-1.5">
+                                <span class="text-xs font-mono text-slate-400">&lambda;<sub>Home</sub> =</span>
+                                <span id="finalLambdaHome" class="text-3xl font-mono font-extrabold text-emerald-400">1.84</span>
+                            </div>
+                            <div id="preMatchLambdaHomeSub" class="text-[11px] font-mono text-slate-400 mt-1">Pre-match &lambda;: 1.84</div>
+                        </div>
+
+                        <!-- Center VS & Total Goals -->
+                        <div class="flex flex-col items-center justify-center space-y-2 py-2">
+                            <div class="px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-[11px] font-mono text-slate-300">
+                                Total Ekspektasi Gol: <strong id="totalExpectedGoals" class="text-white">3.02</strong>
+                            </div>
+                            <div class="text-2xl font-black tracking-widest text-slate-600">VS</div>
+                            <div class="text-[11px] font-mono text-slate-400">
+                                Most Likely Score: <span id="mostLikelyScoreBadge" class="text-emerald-300 font-bold">1 - 1 (11.8%)</span>
+                            </div>
+                        </div>
+
+                        <!-- Away Team Summary -->
+                        <div class="glass-sub rounded-2xl p-4 border border-cyan-500/25">
+                            <div class="text-xs font-mono uppercase text-cyan-400 tracking-wider">Tim Tamu</div>
+                            <h3 id="displayAwayName" class="text-lg font-extrabold text-white truncate mt-0.5">Liverpool</h3>
+                            <div class="mt-3 flex items-baseline justify-center gap-1.5">
+                                <span class="text-xs font-mono text-slate-400">&lambda;<sub>Away</sub> =</span>
+                                <span id="finalLambdaAway" class="text-3xl font-mono font-extrabold text-cyan-400">1.18</span>
+                            </div>
+                            <div id="preMatchLambdaAwaySub" class="text-[11px] font-mono text-slate-400 mt-1">Pre-match &lambda;: 1.18</div>
+                        </div>
+                    </div>
+
+                    <!-- 1X2 PROBABILITY BAR & NUMERIC CARDS -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-emerald-400"><i class="fa-solid fa-house mr-1"></i> Home Win (1): <span id="probHomeText" class="font-mono text-sm">51.2%</span></span>
+                            <span class="text-slate-300">Draw (X): <span id="probDrawText" class="font-mono text-sm">24.8%</span></span>
+                            <span class="text-cyan-400">Away Win (2): <span id="probAwayText" class="font-mono text-sm">24.0%</span> <i class="fa-solid fa-plane ml-1"></i></span>
+                        </div>
+
+                        <!-- Stacked Progress Bar -->
+                        <div class="w-full h-4 rounded-xl bg-slate-900 overflow-hidden flex p-0.5 border border-slate-800">
+                            <div id="barHome" class="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-l-lg transition-all duration-300" style="width: 51.2%"></div>
+                            <div id="barDraw" class="h-full bg-slate-600 transition-all duration-300 mx-0.5" style="width: 24.8%"></div>
+                            <div id="barAway" class="h-full bg-gradient-to-r from-cyan-400 to-cyan-600 rounded-r-lg transition-all duration-300" style="width: 24.0%"></div>
+                        </div>
+
+                        <!-- Secondary Markets (Over/Under 2.5, BTTS, Asian Handicap -0.5, Draw No Bet) -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+                            <div class="glass-sub rounded-xl p-3">
+                                <div class="text-[10px] font-mono uppercase text-slate-400">Over 2.5 Goals</div>
+                                <div id="probOver25" class="text-lg font-mono font-bold text-white mt-0.5">57.4%</div>
+                                <div id="fairOddsOver25" class="text-[10px] font-mono text-emerald-400">Fair Odds: 1.74</div>
+                            </div>
+                            <div class="glass-sub rounded-xl p-3">
+                                <div class="text-[10px] font-mono uppercase text-slate-400">Under 2.5 Goals</div>
+                                <div id="probUnder25" class="text-lg font-mono font-bold text-white mt-0.5">42.6%</div>
+                                <div id="fairOddsUnder25" class="text-[10px] font-mono text-slate-400">Fair Odds: 2.35</div>
+                            </div>
+                            <div class="glass-sub rounded-xl p-3">
+                                <div class="text-[10px] font-mono uppercase text-slate-400">BTTS (Yes)</div>
+                                <div id="probBttsYes" class="text-lg font-mono font-bold text-white mt-0.5">56.8%</div>
+                                <div id="fairOddsBtts" class="text-[10px] font-mono text-cyan-400">Fair Odds: 1.76</div>
+                            </div>
+                            <div class="glass-sub rounded-xl p-3">
+                                <div class="text-[10px] font-mono uppercase text-slate-400">Tail Prob (6+ Gol)</div>
+                                <div id="probTailMass" class="text-lg font-mono font-bold text-indigo-400 mt-0.5">1.42%</div>
+                                <div class="text-[10px] font-mono text-slate-400">11x11 Normalized</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. MODEL COMPARISON: OLD FLAT MULTIPLIER vs SQUAD STAT ACTUARIAL -->
+                <div class="glass-card rounded-2xl p-5 space-y-3 border-l-4 border-l-indigo-500">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced text-indigo-400"></i>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-white">Komparasi Akurasi: Model Lama (Flat 6x6) vs Squad Stat (Actuarial 11x11)</h2>
+                        </div>
+                        <span class="text-[11px] font-mono text-indigo-300">Audit Perbaikan Bias</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="glass-sub rounded-xl p-3 space-y-1">
+                            <div class="text-slate-400 font-mono text-[11px]">Old Model (Flat Multiplier + 6x6 Unnormalized)</div>
+                            <div id="oldModelSummary" class="font-mono text-slate-200 font-semibold">
+                                &lambda;<sub>H</sub>: 1.95 | &lambda;<sub>A</sub>: 1.25
+                            </div>
+                            <div id="oldModel1X2" class="font-mono text-[11px] text-amber-400">
+                                1: 52.8% | X: 23.1% | 2: 22.4% (&Sigma;=98.3%)
+                            </div>
+                        </div>
+
+                        <div class="glass-sub rounded-xl p-3 space-y-1 border border-emerald-500/30">
+                            <div class="text-emerald-400 font-mono text-[11px]">Squad Stat (&alpha;/&beta; + Damped + 11x11 Clamped)</div>
+                            <div id="newModelSummary" class="font-mono text-white font-semibold">
+                                &lambda;<sub>H</sub>: 1.84 | &lambda;<sub>A</sub>: 1.18
+                            </div>
+                            <div id="newModel1X2" class="font-mono text-[11px] text-emerald-300">
+                                1: 51.2% | X: 24.8% | 2: 24.0% (&Sigma;=100.0%)
+                            </div>
+                        </div>
+
+                        <div class="glass-sub rounded-xl p-3 space-y-1">
+                            <div class="text-cyan-400 font-mono text-[11px]">Koreksi Bias Matematis (&Delta; Error)</div>
+                            <div id="deltaExplanation" class="text-[11px] text-slate-300 leading-snug">
+                                Mencegah kehilangan <span class="text-white font-mono">1.7%</span> probabilitas ekor & memperbaiki bias multiplier.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 11x11 NORMALIZED DIXON-COLES EXACT SCORE HEATMAP (6x6 DISPLAY) -->
+                <div class="glass-card rounded-2xl p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-table-cells text-emerald-400"></i>
+                                <h2 class="text-sm font-bold uppercase tracking-wider text-white">4. Matriks Skor Presisi Dixon-Coles (6x6 View dari 11x11 Engine)</h2>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Baris = Gol Home (0–5) &bull; Kolom = Gol Away (0–5) &bull; Koreksi ketergantungan skor rendah (&tau; clamped)</p>
+                        </div>
+
+                        <!-- Rho Selector -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-mono text-slate-400">Koefisien &rho;:</label>
+                            <select id="rhoSelect" onchange="recalculateModel()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono text-white focus:outline-none">
+                                <option value="-0.13">-0.13 (Standar Empiris Eropa)</option>
+                                <option value="-0.18">-0.18 (High Tactical Draw Bias)</option>
+                                <option value="-0.08">-0.08 (Liga Terbuka / Attacking)</option>
+                                <option value="0.00">0.00 (Independent Poisson Murni)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 6x6 Matrix Container -->
+                    <div class="overflow-x-auto">
+                        <div id="scoreMatrixContainer" class="min-w-[480px]"></div>
+                    </div>
+                </div>
+
+                <!-- 4. ACTUARIAL EV (EXPECTED VALUE) & KELLY CRITERION CALCULATOR -->
+                <div class="glass-card rounded-2xl p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calculator text-amber-400"></i>
+                            <h2 class="text-sm font-bold uppercase tracking-wider text-white">5. Actuarial Value Finder, Margin Stripper & Kelly Criterion</h2>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-mono">
+                            <span class="text-slate-400">Bookmaker Margin:</span>
+                            <span id="bookieMarginBadge" class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">5.24%</span>
+                        </div>
+                    </div>
+
+                    <!-- Market Odds Inputs -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                        <div>
+                            <label class="block text-slate-400 font-mono mb-1">Odds Home (1)</label>
+                            <input id="oddsHomeInput" type="number" step="0.05" value="1.95" oninput="calculateEVAndKelly()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 font-mono text-white focus:border-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-mono mb-1">Odds Draw (X)</label>
+                            <input id="oddsDrawInput" type="number" step="0.05" value="3.60" oninput="calculateEVAndKelly()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 font-mono text-white focus:border-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-mono mb-1">Odds Away (2)</label>
+                            <input id="oddsAwayInput" type="number" step="0.05" value="3.80" oninput="calculateEVAndKelly()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 font-mono text-white focus:border-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-mono mb-1">Odds Over 2.5</label>
+                            <input id="oddsOverInput" type="number" step="0.05" value="1.85" oninput="calculateEVAndKelly()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 font-mono text-white focus:border-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-mono mb-1">Kelly Fraction</label>
+                            <select id="kellyFractionSelect" onchange="calculateEVAndKelly()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 font-mono text-white focus:outline-none">
+                                <option value="0.25">Quarter Kelly (0.25x Aman)</option>
+                                <option value="0.50">Half Kelly (0.50x Moderat)</option>
+                                <option value="1.00">Full Kelly (1.00x Agresif)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Value Output Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs font-mono">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-400 text-[11px]">
+                                    <th class="py-2 px-2">Pasar (Market)</th>
+                                    <th class="py-2 px-2">Model Prob</th>
+                                    <th class="py-2 px-2">Fair Odds</th>
+                                    <th class="py-2 px-2">Market Odds</th>
+                                    <th class="py-2 px-2">Expected Value (EV%)</th>
+                                    <th class="py-2 px-2 text-right">Rekomendasi Stake (Kelly)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="evTableBody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Monte Carlo Convergence Banner -->
+                    <div id="monteCarloBox" class="glass-sub rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-wave-square text-indigo-400"></i>
+                            <span class="text-slate-300">Verifikasi 10,000 Simulasi Monte Carlo:</span>
+                        </div>
+                        <div id="monteCarloResultText" class="text-indigo-300 font-semibold">
+                            Klik tombol "10K Monte Carlo" di atas untuk menguji stokastik.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: ARSITEKTUR RUMUS & PENJELASAN PENINGKATAN AKURASI -->
+    <div id="diagnosticsModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-card max-w-3xl w-full max-h-[88vh] overflow-y-auto rounded-2xl p-6 space-y-5 border border-emerald-500/30 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-microchip text-emerald-400 text-lg"></i>
+                    <h3 class="text-base font-bold text-white uppercase tracking-wider">Spesifikasi Mesin Aktuaria Squad Stat (Tahap 1 — Prod)</h3>
+                </div>
+                <button onclick="toggleModal('diagnosticsModal')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+                <div class="glass-sub p-4 rounded-xl space-y-1.5">
+                    <h4 class="font-bold text-emerald-400 text-sm">1. Pemisahan Kekuatan Serangan (&alpha;) & Kelemahan Pertahanan (&beta;) + Synthetic xG</h4>
+                    <p>
+                        Menggantikan rata-rata gol kasar dengan model struktural Maher (1982) yang dikalibrasi terhadap baseline spesifik liga ($\mu_{\text{home}}, \mu_{\text{away}}$), selisih Elo Rating ($\Delta \text{Elo}$), serta <em>Time-Decayed Synthetic xG</em>:
+                    </p>
+                    <div class="bg-slate-950 p-2.5 rounded-lg font-mono text-[11px] text-emerald-300">
+                        &lambda;<sub>base, H</sub> = [ 0.65 &times; (&mu;<sub>H</sub> &times; &alpha;<sub>H</sub> &times; &beta;<sub>A</sub>) + 0.35 &times; (xG<sub>H</sub> &times; &beta;<sub>A</sub>) ] &times; 10<sup>(&Delta;Elo / 1200)</sup>
+                    </div>
+                </div>
+
+                <div class="glass-sub p-4 rounded-xl space-y-1.5">
+                    <h4 class="font-bold text-cyan-400 text-sm">2. Redaman Log-Aditif Spesifik Posisi (No Multiplier Stacking Error)</h4>
+                    <p>
+                        Alih-alih mengalikan <code>0.89 &times; 0.86 &times; 0.90</code> secara langsung yang membuat $\lambda$ jatuh tidak realistis, Squad Stat mengumpulkan perubahan dalam ruang logaritmik dan meredamnya dengan fungsi saturasi <code>tanh()</code> (batas maksimal perubahan kontekstual &plusmn;32%):
+                    </p>
+                    <div class="bg-slate-950 p-2.5 rounded-lg font-mono text-[11px] text-cyan-300">
+                        &lambda;<sub>adj</sub> = &lambda;<sub>base</sub> &times; exp( 0.32 &times; tanh( &Sigma; &delta;<sub>attack, i</sub> + &Sigma; &delta;<sub>opp_defense, j</sub> ) )
+                    </div>
+                </div>
+
+                <div class="glass-sub p-4 rounded-xl space-y-1.5">
+                    <h4 class="font-bold text-indigo-400 text-sm">3. Matriks Dixon-Coles 11x11 Terkunci (&tau; &ge; 0 Clamping & Tail Renormalization)</h4>
+                    <p>
+                        Menghitung probabilitas skor dari $0\text{–}0$ hingga $10\text{–}10$ (121 kombinasi) di balik layar. Faktor koreksi $\tau(x,y)$ pada skor $(0,0), (1,0), (0,1), (1,1)$ dijaga agar tidak pernah bernilai negatif ketika $\lambda_1 \lambda_2$ besar, lalu seluruh matriks dinormalisasi ulang sehingga $\sum_{i=0}^{10}\sum_{j=0}^{10} P(i,j) = 100.00\%$.
+                    </p>
+                </div>
+
+                <div class="glass-sub p-4 rounded-xl space-y-1.5">
+                    <h4 class="font-bold text-rose-400 text-sm">4. Proses Poisson Non-Homogen untuk Live In-Play (Kurva Weibull + Efek Skor)</h4>
+                    <p>
+                        Intensitas gol di sepak bola meningkat pada akhir babak pertama (40–45') dan akhir pertandingan (75–90+'). Laju sisa gol dihitung menggunakan integral intensitas waktu $W_{\text{rem}}(t) = \left(\frac{90 - t}{90}\right)^{0.86}$ dikalikan dengan faktor taktis skor saat ini (tim yang tertinggal meningkatkan intensitas serangan +12%, tim yang unggul menurunkan risiko -10%).
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="toggleModal('diagnosticsModal')" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs">
+                    Tutup Spesifikasi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT ENGINE -->
+    <script>
+        /*************************************************************************
+         * 1. BUILT-IN RESILIENT CLUB & LEAGUE DATABASE (PRODUCTION FALLBACK)
+         *************************************************************************/
+        const LEAGUE_BASELINES = {
+            'eng.1': { name: 'Premier League', muHome: 1.58, muAway: 1.30, defaultRho: -0.13 },
+            'esp.1': { name: 'LaLiga', muHome: 1.46, muAway: 1.16, defaultRho: -0.15 },
+            'ita.1': { name: 'Serie A', muHome: 1.48, muAway: 1.20, defaultRho: -0.14 },
+            'ger.1': { name: 'Bundesliga', muHome: 1.72, muAway: 1.42, defaultRho: -0.10 },
+            'fra.1': { name: 'Ligue 1', muHome: 1.51, muAway: 1.23, defaultRho: -0.13 },
+            'uefa.champions': { name: 'UEFA Champions League', muHome: 1.64, muAway: 1.32, defaultRho: -0.11 }
+        };
+
+        const CLUB_DATABASE = {
+            // Premier League
+            'Arsenal': { league: 'eng.1', elo: 1945, alpha: 1.34, beta: 0.72, xg: 2.08, shots: 16.4, sot: 6.1, poss: 58 },
+            'Manchester City': { league: 'eng.1', elo: 1965, alpha: 1.42, beta: 0.78, xg: 2.24, shots: 17.8, sot: 6.8, poss: 64 },
+            'Liverpool': { league: 'eng.1', elo: 1935, alpha: 1.36, beta: 0.80, xg: 2.15, shots: 17.1, sot: 6.3, poss: 59 },
+            'Chelsea': { league: 'eng.1', elo: 1850, alpha: 1.18, beta: 0.94, xg: 1.76, shots: 14.5, sot: 5.2, poss: 56 },
+            'Newcastle United': { league: 'eng.1', elo: 1840, alpha: 1.16, beta: 0.92, xg: 1.70, shots: 13.8, sot: 4.9, poss: 51 },
+            'Aston Villa': { league: 'eng.1', elo: 1845, alpha: 1.15, beta: 0.95, xg: 1.65, shots: 13.2, sot: 4.8, poss: 50 },
+            'Tottenham Hotspur': { league: 'eng.1', elo: 1830, alpha: 1.24, beta: 1.06, xg: 1.82, shots: 15.1, sot: 5.5, poss: 57 },
+            'Manchester United': { league: 'eng.1', elo: 1810, alpha: 1.06, beta: 1.02, xg: 1.52, shots: 13.4, sot: 4.6, poss: 51 },
+            // LaLiga
+            'Real Madrid': { league: 'esp.1', elo: 1970, alpha: 1.44, beta: 0.76, xg: 2.18, shots: 16.9, sot: 6.5, poss: 60 },
+            'Barcelona': { league: 'esp.1', elo: 1930, alpha: 1.40, beta: 0.84, xg: 2.12, shots: 16.5, sot: 6.2, poss: 63 },
+            'Atletico Madrid': { league: 'esp.1', elo: 1885, alpha: 1.18, beta: 0.75, xg: 1.68, shots: 12.9, sot: 4.7, poss: 49 },
+            'Athletic Club': { league: 'esp.1', elo: 1825, alpha: 1.10, beta: 0.86, xg: 1.54, shots: 13.1, sot: 4.5, poss: 50 },
+            // Serie A
+            'Inter Milan': { league: 'ita.1', elo: 1940, alpha: 1.38, beta: 0.74, xg: 2.06, shots: 15.8, sot: 5.9, poss: 57 },
+            'Atalanta': { league: 'ita.1', elo: 1880, alpha: 1.32, beta: 0.88, xg: 1.94, shots: 15.5, sot: 5.7, poss: 54 },
+            'Napoli': { league: 'ita.1', elo: 1875, alpha: 1.22, beta: 0.82, xg: 1.78, shots: 14.6, sot: 5.1, poss: 55 },
+            'AC Milan': { league: 'ita.1', elo: 1855, alpha: 1.20, beta: 0.92, xg: 1.74, shots: 14.2, sot: 5.0, poss: 54 },
+            'Juventus': { league: 'ita.1', elo: 1865, alpha: 1.12, beta: 0.76, xg: 1.58, shots: 13.0, sot: 4.4, poss: 53 },
+            // Bundesliga & Ligue 1
+            'Bayern Munich': { league: 'ger.1', elo: 1950, alpha: 1.46, beta: 0.82, xg: 2.35, shots: 18.2, sot: 7.0, poss: 64 },
+            'Bayer Leverkusen': { league: 'ger.1', elo: 1915, alpha: 1.34, beta: 0.84, xg: 2.04, shots: 16.0, sot: 6.0, poss: 59 },
+            'Borussia Dortmund': { league: 'ger.1', elo: 1860, alpha: 1.26, beta: 0.98, xg: 1.88, shots: 14.9, sot: 5.4, poss: 56 },
+            'Paris Saint-Germain': { league: 'fra.1', elo: 1925, alpha: 1.42, beta: 0.80, xg: 2.20, shots: 17.4, sot: 6.6, poss: 65 },
+            'AS Monaco': { league: 'fra.1', elo: 1820, alpha: 1.20, beta: 0.96, xg: 1.75, shots: 14.1, sot: 5.1, poss: 53 }
+        };
+
+        // Global State
+        let currentFixtures = [];
+        let liveScore = { home: 0, away: 0 };
+        let latestModelOutput = {
+            lambdaHome: 1.84,
+            lambdaAway: 1.18,
+            probHome: 0.512,
+            probDraw: 0.248,
+            probAway: 0.240,
+            probOver25: 0.574,
+            probUnder25: 0.426,
+            probBtts: 0.568,
+            tailMass: 0.014,
+            matrix11x11: []
+        };
+
+        /*************************************************************************
+         * 2. INITIALIZATION & TEAM DROPDOWN POPULATION
+         *************************************************************************/
+        window.onload = function() {
+            populateClubSelectors();
+            // Default matchup: Arsenal vs Liverpool
+            document.getElementById('homeTeamSelect').value = 'Arsenal';
+            document.getElementById('awayTeamSelect').value = 'Liverpool';
+            loadTeamTelemetryIntoUI('home', 'Arsenal');
+            loadTeamTelemetryIntoUI('away', 'Liverpool');
+            fetchESPNFixtures();
+            recalculateModel();
+        };
+
+        function populateClubSelectors() {
+            const homeSel = document.getElementById('homeTeamSelect');
+            const awaySel = document.getElementById('awayTeamSelect');
+            homeSel.innerHTML = '';
+            awaySel.innerHTML = '';
+
+            Object.keys(CLUB_DATABASE).forEach(clubName => {
+                const optH = document.createElement('option');
+                optH.value = clubName;
+                optH.textContent = clubName;
+                homeSel.appendChild(optH);
+
+                const optA = document.createElement('option');
+                optA.value = clubName;
+                optA.textContent = clubName;
+                awaySel.appendChild(optA);
+            });
+        }
+
+        function loadTeamTelemetryIntoUI(side, clubName) {
+            const club = CLUB_DATABASE[clubName];
+            if (!club) return;
+
+            document.getElementById(`${side}EloDisplay`).textContent = `Elo: ${club.elo}`;
+            document.getElementById(`${side}AlphaSlider`).value = club.alpha.toFixed(2);
+            document.getElementById(`${side}AlphaVal`).textContent = club.alpha.toFixed(2);
+            document.getElementById(`${side}BetaSlider`).value = club.beta.toFixed(2);
+            document.getElementById(`${side}BetaVal`).textContent = club.beta.toFixed(2);
+            document.getElementById(`${side}XgSlider`).value = club.xg.toFixed(2);
+            document.getElementById(`${side}XgVal`).textContent = club.xg.toFixed(2);
+
+            // Raw shots telemetry
+            document.getElementById(`${side}RawShots`).value = club.shots;
+            document.getElementById(`${side}RawSot`).value = club.sot;
+            document.getElementById(`${side}RawPoss`).value = club.poss;
+        }
+
+        function handleTeamChange(side) {
+            const clubName = document.getElementById(`${side}TeamSelect`).value;
+            loadTeamTelemetryIntoUI(side, clubName);
+            recalculateModel();
+        }
+
+        function handleManualStatChange() {
+            ['home', 'away'].forEach(side => {
+                const a = parseFloat(document.getElementById(`${side}AlphaSlider`).value);
+                const b = parseFloat(document.getElementById(`${side}BetaSlider`).value);
+                const xg = parseFloat(document.getElementById(`${side}XgSlider`).value);
+                document.getElementById(`${side}AlphaVal`).textContent = a.toFixed(2);
+                document.getElementById(`${side}BetaVal`).textContent = b.toFixed(2);
+                document.getElementById(`${side}XgVal`).textContent = xg.toFixed(2);
+            });
+            recalculateModel();
+        }
+
+        function applySyntheticXg(side) {
+            const shots = parseFloat(document.getElementById(`${side}RawShots`).value) || 12;
+            const sot = parseFloat(document.getElementById(`${side}RawSot`).value) || 4;
+            const poss = parseFloat(document.getElementById(`${side}RawPoss`).value) || 50;
+
+            const nonSot = Math.max(0, shots - sot);
+            // Empirical Synthetic xG Formula from Shots on Target, Non-SoT & Possession
+            let synthXg = (sot * 0.285) + (nonSot * 0.038) + ((poss - 50) * 0.0075);
+            synthXg = Math.max(0.50, Math.min(3.50, synthXg));
+
+            document.getElementById(`${side}XgSlider`).value = synthXg.toFixed(2);
+            document.getElementById(`${side}XgVal`).textContent = synthXg.toFixed(2);
+            recalculateModel();
+        }
+
+        function handleLeagueChange() {
+            const leagueCode = document.getElementById('leagueSelect').value;
+            const base = LEAGUE_BASELINES[leagueCode];
+            if (base) {
+                document.getElementById('leagueMuHome').textContent = base.muHome.toFixed(2);
+                document.getElementById('leagueMuAway').textContent = base.muAway.toFixed(2);
+            }
+            fetchESPNFixtures();
+            recalculateModel();
+        }
+
+        /*************************************************************************
+         * 3. LIVE ESPN PUBLIC API FETCHER WITH RESILIENT FALLBACK
+         *************************************************************************/
+        async function fetchESPNFixtures() {
+            const leagueCode = document.getElementById('leagueSelect').value;
+            const fixtureSelect = document.getElementById('fixtureSelect');
+            const apiStatusText = document.getElementById('apiStatusText');
+            const apiDot = document.getElementById('apiDot');
+
+            apiStatusText.textContent = 'Syncing ESPN API...';
+            apiDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+
+            try {
+                const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${leagueCode}/scoreboard`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('ESPN HTTP ' + response.status);
+                const data = await response.json();
+
+                currentFixtures = [];
+                fixtureSelect.innerHTML = '<option value="">-- Pilih Pertandingan Live / Mendatang (ESPN API) --</option>';
+
+                if (data.events && data.events.length > 0) {
+                    data.events.forEach((ev, idx) => {
+                        const comp = ev.competitions && ev.competitions[0];
+                        if (!comp || !comp.competitors || comp.competitors.length < 2) return;
+
+                        const homeComp = comp.competitors.find(c => c.homeAway === 'home') || comp.competitors[0];
+                        const awayComp = comp.competitors.find(c => c.homeAway === 'away') || comp.competitors[1];
+
+                        const homeName = homeComp.team.displayName;
+                        const awayName = awayComp.team.displayName;
+                        const statusDetail = ev.status?.type?.shortDetail || 'Scheduled';
+
+                        // Parse form or record if available to calibrate unknown teams dynamically
+                        const homeRecord = homeComp.records?.[0]?.summary || '10-5-5';
+                        const awayRecord = awayComp.records?.[0]?.summary || '8-6-6';
+
+                        currentFixtures.push({
+                            homeName,
+                            awayName,
+                            statusDetail,
+                            homeRecord,
+                            awayRecord
+                        });
+
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.textContent = `[ESPN] ${homeName} vs ${awayName} (${statusDetail})`;
+                        fixtureSelect.appendChild(opt);
+                    });
+
+                    apiStatusText.textContent = `ESPN Live: ${currentFixtures.length} Laga`;
+                    apiDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                } else {
+                    loadPresetFixturesForLeague(leagueCode);
+                    apiStatusText.textContent = 'ESPN Standby (Preset Mode)';
+                    apiDot.className = 'w-2 h-2 rounded-full bg-cyan-400';
+                }
+            } catch (err) {
+                loadPresetFixturesForLeague(leagueCode);
+                apiStatusText.textContent = 'Local Telemetry DB Active';
+                apiDot.className = 'w-2 h-2 rounded-full bg-cyan-400';
+            }
+        }
+
+        function loadPresetFixturesForLeague(leagueCode) {
+            const fixtureSelect = document.getElementById('fixtureSelect');
+            fixtureSelect.innerHTML = '<option value="">-- Pilih Preset Matchup Unggulan --</option>';
+            const presets = [
+                { homeName: 'Arsenal', awayName: 'Liverpool', statusDetail: 'Top Clash' },
+                { homeName: 'Manchester City', awayName: 'Chelsea', statusDetail: 'Featured' },
+                { homeName: 'Real Madrid', awayName: 'Barcelona', statusDetail: 'El Clasico' },
+                { homeName: 'Inter Milan', awayName: 'AC Milan', statusDetail: 'Derby della Madonnina' },
+                { homeName: 'Bayern Munich', awayName: 'Bayer Leverkusen', statusDetail: 'Topspiel' },
+                { homeName: 'Paris Saint-Germain', awayName: 'AS Monaco', statusDetail: 'Ligue 1 Choc' }
+            ];
+            currentFixtures = presets;
+            presets.forEach((p, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `[PRESET] ${p.homeName} vs ${p.awayName} (${p.statusDetail})`;
+                fixtureSelect.appendChild(opt);
+            });
+        }
+
+        function handleFixtureSelection() {
+            const idx = document.getElementById('fixtureSelect').value;
+            if (idx === '' || !currentFixtures[idx]) return;
+
+            const match = currentFixtures[idx];
+            ensureTeamInDatabase(match.homeName, match.homeRecord, true);
+            ensureTeamInDatabase(match.awayName, match.awayRecord, false);
+
+            populateClubSelectors();
+            document.getElementById('homeTeamSelect').value = match.homeName;
+            document.getElementById('awayTeamSelect').value = match.awayName;
+
+            loadTeamTelemetryIntoUI('home', match.homeName);
+            loadTeamTelemetryIntoUI('away', match.awayName);
+            recalculateModel();
+        }
+
+        function ensureTeamInDatabase(teamName, recordStr, isHome) {
+            if (CLUB_DATABASE[teamName]) return;
+            // Estimate dynamic alpha/beta from W-D-L record if team came fresh from ESPN API
+            let wins = 8, draws = 5, losses = 7;
+            if (recordStr && recordStr.includes('-')) {
+                const parts = recordStr.split('-').map(n => parseInt(n, 10) || 0);
+                if (parts.length >= 3) {
+                    [wins, draws, losses] = parts;
+                }
+            }
+            const total = Math.max(1, wins + draws + losses);
+            const winRate = wins / total;
+            const lossRate = losses / total;
+
+            const estAlpha = Math.max(0.72, Math.min(1.55, 0.85 + winRate * 0.75));
+            const estBeta = Math.max(0.68, Math.min(1.45, 0.78 + lossRate * 0.70));
+            const estElo = Math.round(1700 + (winRate - lossRate) * 320);
+            const estXg = Number((estAlpha * (isHome ? 1.45 : 1.25)).toFixed(2));
+
+            CLUB_DATABASE[teamName] = {
+                league: document.getElementById('leagueSelect').value,
+                elo: estElo,
+                alpha: Number(estAlpha.toFixed(2)),
+                beta: Number(estBeta.toFixed(2)),
+                xg: estXg,
+                shots: Number((10 + winRate * 8).toFixed(1)),
+                sot: Number((3.5 + winRate * 3.2).toFixed(1)),
+                poss: Math.round(45 + (winRate - 0.35) * 25)
+            };
+        }
+
+        /*************************************************************************
+         * 4. CORE ACTUARIAL MATH ENGINE (SEPARATED ALPHA/BETA + DIXON-COLES 11x11)
+         *************************************************************************/
+        function recalculateModel() {
+            const leagueCode = document.getElementById('leagueSelect').value;
+            const league = LEAGUE_BASELINES[leagueCode] || LEAGUE_BASELINES['eng.1'];
+
+            const homeName = document.getElementById('homeTeamSelect').value || 'Home';
+            const awayName = document.getElementById('awayTeamSelect').value || 'Away';
+            document.getElementById('displayHomeName').textContent = homeName;
+            document.getElementById('displayAwayName').textContent = awayName;
+
+            const homeClub = CLUB_DATABASE[homeName] || { elo: 1850 };
+            const awayClub = CLUB_DATABASE[awayName] || { elo: 1820 };
+
+            // 1. Read Separated Alpha, Beta, and Synthetic xG
+            const alphaH = parseFloat(document.getElementById('homeAlphaSlider').value);
+            const betaH = parseFloat(document.getElementById('homeBetaSlider').value);
+            const xgH = parseFloat(document.getElementById('homeXgSlider').value);
+
+            const alphaA = parseFloat(document.getElementById('awayAlphaSlider').value);
+            const betaA = parseFloat(document.getElementById('awayBetaSlider').value);
+            const xgA = parseFloat(document.getElementById('awayXgSlider').value);
+
+            // 2. Structural Maher Baseline + Synthetic xG Blend + Elo Diff Scaling
+            const eloDiff = (homeClub.elo - awayClub.elo);
+            const eloFactorH = Math.pow(10, eloDiff / 1400);
+            const eloFactorA = Math.pow(10, -eloDiff / 1400);
+
+            const structuralH = league.muHome * alphaH * betaA;
+            const structuralA = league.muAway * alphaA * betaH;
+
+            // Blend 65% Structural Alpha/Beta with 35% Synthetic xG cross-adjusted by opponent defense beta
+            let baseLambdaH = ((0.65 * structuralH) + (0.35 * xgH * betaA)) * eloFactorH;
+            let baseLambdaA = ((0.65 * structuralA) + (0.35 * xgA * betaH)) * eloFactorA;
+
+            // 3. Positional & Tactical Log-Additive Matrix (Damped via hyperbolic tangent)
+            const homeSquad = document.getElementById('homeSquadState').value;
+            const awaySquad = document.getElementById('awaySquadState').value;
+            const homeTactic = document.getElementById('homeTactic').value;
+            const awayTactic = document.getElementById('awayTactic').value;
+            const restState = document.getElementById('restState').value;
+            const weatherState = document.getElementById('weatherState').value;
+
+            let logModH = 0.0;
+            let logModA = 0.0;
+
+            // Also track naive flat multiplier to show comparison with old model
+            let flatMultH = 1.0;
+            let flatMultA = 1.0;
+
+            // Squad Positional Impacts (Notice how CB/GK absence boosts OPPONENT lambda!)
+            if (homeSquad === 'striker_out') { logModH -= 0.14; flatMultH *= 0.86; }
+            if (homeSquad === 'cb_gk_out')   { logModA += 0.15; flatMultH *= 0.86; } // Old model wrongly reduced own lambda!
+            if (homeSquad === 'pivot_out')   { logModH -= 0.06; logModA += 0.08; flatMultH *= 0.90; }
+            if (homeSquad === 'crisis')      { logModH -= 0.16; logModA += 0.17; flatMultH *= 0.78; }
+
+            if (awaySquad === 'striker_out') { logModA -= 0.14; flatMultA *= 0.86; }
+            if (awaySquad === 'cb_gk_out')   { logModH += 0.15; flatMultA *= 0.86; }
+            if (awaySquad === 'pivot_out')   { logModA -= 0.06; logModH += 0.08; flatMultA *= 0.90; }
+            if (awaySquad === 'crisis')      { logModA -= 0.16; logModH += 0.17; flatMultA *= 0.78; }
+
+            // Tactical Matchups (High press boosts own attack AND opponent counter-attack)
+            if (homeTactic === 'high_press') { logModH += 0.105; logModA += 0.085; flatMultH *= 1.15; }
+            if (homeTactic === 'low_block')  { logModH -= 0.15;  logModA -= 0.16;  flatMultH *= 0.85; }
+            if (homeTactic === 'wings')      { logModH += 0.13;  logModA += 0.11;  flatMultH *= 1.12; }
+
+            if (awayTactic === 'high_press') { logModA += 0.105; logModH += 0.085; flatMultA *= 1.15; }
+            if (awayTactic === 'low_block')  { logModA -= 0.13;  logModH -= 0.17;  flatMultA *= 0.85; }
+            if (awayTactic === 'wings')      { logModA += 0.13;  logModH += 0.12;  flatMultA *= 1.12; }
+
+            // Rest & Fatigue
+            if (restState === 'home_tired') { logModH -= 0.08; logModA += 0.05; flatMultH *= 0.90; }
+            if (restState === 'away_tired') { logModA -= 0.09; logModH += 0.06; flatMultA *= 0.90; }
+            if (restState === 'both_tired') { logModH -= 0.05; logModA -= 0.05; flatMultH *= 0.90; flatMultA *= 0.90; }
+
+            // Weather
+            if (weatherState === 'ideal')       { logModH += 0.02; logModA += 0.02; }
+            if (weatherState === 'wet_fast')    { logModH += 0.04; logModA += 0.04; flatMultH *= 1.05; flatMultA *= 1.05; }
+            if (weatherState === 'heavy_rain')  { logModH -= 0.105; logModA -= 0.105; flatMultH *= 0.89; flatMultA *= 0.89; }
+            if (weatherState === 'strong_wind') { logModH -= 0.07; logModA -= 0.07; flatMultH *= 0.92; flatMultA *= 0.92; }
+
+            // Apply Soft-Saturation tanh() Damping (Max cap +/- 32% so modifiers never explode)
+            const maxCap = 0.32;
+            const dampedFactorH = Math.exp(maxCap * Math.tanh(logModH / maxCap));
+            const dampedFactorA = Math.exp(maxCap * Math.tanh(logModA / maxCap));
+
+            const pctModH = ((dampedFactorH - 1) * 100).toFixed(1);
+            const pctModA = ((dampedFactorA - 1) * 100).toFixed(1);
+            document.getElementById('dampedModHome').textContent = `Home: ${pctModH >= 0 ? '+' : ''}${pctModH}%`;
+            document.getElementById('dampedModAway').textContent = `Away: ${pctModA >= 0 ? '+' : ''}${pctModA}%`;
+
+            const preMatchLambdaH = Math.max(0.20, Math.min(4.80, baseLambdaH * dampedFactorH));
+            const preMatchLambdaA = Math.max(0.20, Math.min(4.80, baseLambdaA * dampedFactorA));
+
+            document.getElementById('preMatchLambdaHomeSub').textContent = `Pre-match λ: ${preMatchLambdaH.toFixed(2)}`;
+            document.getElementById('preMatchLambdaAwaySub').textContent = `Pre-match λ: ${preMatchLambdaA.toFixed(2)}`;
+
+            // 4. Continuous Non-Homogeneous In-Play Adjustment (Minute 0 to 89)
+            const minute = parseInt(document.getElementById('liveMinuteSlider').value, 10) || 0;
+            const redState = document.getElementById('redCardState').value;
+
+            let activeLambdaH = preMatchLambdaH;
+            let activeLambdaA = preMatchLambdaA;
+
+            if (minute === 0 && liveScore.home === 0 && liveScore.away === 0 && redState === '11v11') {
+                document.getElementById('liveMinuteVal').textContent = `0' (Pre-Match)`;
+                document.getElementById('inPlayBadge').textContent = `PRE-MATCH (0')`;
+                document.getElementById('inPlayBadge').className = 'px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono';
+                document.getElementById('remainingIntensityText').textContent = `100.0% (Full Match)`;
+            } else {
+                document.getElementById('liveMinuteVal').textContent = `${minute}' (Skor ${liveScore.home}-${liveScore.away})`;
+                document.getElementById('inPlayBadge').textContent = `LIVE IN-PLAY (${minute}')`;
+                document.getElementById('inPlayBadge').className = 'px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono animate-pulse';
+
+                // Non-homogeneous Weibull time decay: goals cluster late in halves, so exponent 0.85 retains higher late intensity
+                const remFraction = Math.max(0.01, (90 - minute) / 90);
+                const weibullWeight = Math.pow(remFraction, 0.85);
+                document.getElementById('remainingIntensityText').textContent = `${(weibullWeight * 100).toFixed(1)}% (Sisa ${90 - minute}m)`;
+
+                // Game State Effect (Scoreline urgency)
+                const scoreDiff = liveScore.home - liveScore.away;
+                let stateModH = 1.0;
+                let stateModA = 1.0;
+                if (scoreDiff === 1) { stateModH = 0.91; stateModA = 1.12; }
+                else if (scoreDiff >= 2) { stateModH = 0.85; stateModA = 1.16; }
+                else if (scoreDiff === -1) { stateModH = 1.14; stateModA = 0.90; }
+                else if (scoreDiff <= -2) { stateModH = 1.18; stateModA = 0.84; }
+
+                // Red Card Markov Multiplier
+                let redModH = 1.0, redModA = 1.0;
+                if (redState === '10v11') { redModH = 0.68; redModA = 1.34; }
+                if (redState === '11v10') { redModH = 1.36; redModA = 0.66; }
+                if (redState === '10v10') { redModH = 0.88; redModA = 0.88; }
+
+                activeLambdaH = Math.max(0.03, preMatchLambdaH * weibullWeight * stateModH * redModH);
+                activeLambdaA = Math.max(0.03, preMatchLambdaA * weibullWeight * stateModA * redModA);
+            }
+
+            // Update Hero Lambda UI
+            const expectedTotalH = liveScore.home + activeLambdaH;
+            const expectedTotalA = liveScore.away + activeLambdaA;
+            document.getElementById('finalLambdaHome').textContent = expectedTotalH.toFixed(2);
+            document.getElementById('finalLambdaAway').textContent = expectedTotalA.toFixed(2);
+            document.getElementById('totalExpectedGoals').textContent = (expectedTotalH + expectedTotalA).toFixed(2);
+
+            // 5. Compute 11x11 Normalized Dixon-Coles Matrix (Scores 0..10)
+            const selectedRho = parseFloat(document.getElementById('rhoSelect').value);
+            document.getElementById('activeRhoBadge').textContent = selectedRho.toFixed(2);
+
+            const dcResult = computeDixonColesMatrix(activeLambdaH, activeLambdaA, selectedRho, 10, liveScore.home, liveScore.away);
+            latestModelOutput = {
+                lambdaHome: expectedTotalH,
+                lambdaAway: expectedTotalA,
+                ...dcResult
+            };
+
+            // 6. Compute Old Flat Model (Unnormalized 6x6 + Crude Multipliers) for Audit Comparison
+            const oldLambdaH = Math.max(0.2, ((homeClub.elo / 1850) * 1.50) * flatMultH);
+            const oldLambdaA = Math.max(0.2, ((awayClub.elo / 1850) * 1.25) * flatMultA);
+            const oldResult = computeNaive6x6Model(oldLambdaH, oldLambdaA, selectedRho);
+
+            updateDashboardUI(dcResult, oldResult, oldLambdaH, oldLambdaA, expectedTotalH, expectedTotalA);
+            render6x6Heatmap(dcResult.matrix11x11, liveScore.home, liveScore.away);
+            calculateEVAndKelly();
+        }
+
+        /**
+         * Factorial & Poisson PMF helper
+         */
+        const FACTORIALS = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600];
+        function poissonPMF(k, lambda) {
+            if (k < 0) return 0;
+            const fact = FACTORIALS[k] || Math.exp(lgamma(k + 1));
+            return (Math.pow(lambda, k) * Math.exp(-lambda)) / fact;
+        }
+        function lgamma(n) {
+            // Stirling approximation for k > 12
+            return (n - 0.5) * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI);
+        }
+
+        /**
+         * 11x11 Clamped & Normalized Dixon-Coles Engine
+         */
+        function computeDixonColesMatrix(remLambdaH, remLambdaA, rho, maxGoals = 10, baseGoalsH = 0, baseGoalsA = 0) {
+            // Mathematical safety bounds on rho so tau(x,y) is strictly non-negative (>= 0.02)
+            const maxNegRho = -0.95 / Math.max(remLambdaH, remLambdaA, 1.0);
+            const maxPosRho = 0.95 / Math.max(remLambdaH * remLambdaA, 1.0);
+            const safeRho = Math.max(maxNegRho, Math.min(maxPosRho, rho));
+
+            const rawMatrix = Array.from({ length: maxGoals + 1 }, () => Array(maxGoals + 1).fill(0));
+            let totalMass = 0;
+
+            for (let remH = 0; remH <= maxGoals - baseGoalsH; remH++) {
+                for (let remA = 0; remA <= maxGoals - baseGoalsA; remA++) {
+                    const pInd = poissonPMF(remH, remLambdaH) * poissonPMF(remA, remLambdaA);
+                    let tau = 1.0;
+                    if (remH === 0 && remA === 0) tau = 1.0 - (remLambdaH * remLambdaA * safeRho);
+                    else if (remH === 0 && remA === 1) tau = 1.0 + (remLambdaH * safeRho);
+                    else if (remH === 1 && remA === 0) tau = 1.0 + (remLambdaA * safeRho);
+                    else if (remH === 1 && remA === 1) tau = 1.0 - safeRho;
+
+                    tau = Math.max(0.02, tau); // Strict non-negative clamp
+                    const finalH = baseGoalsH + remH;
+                    const finalA = baseGoalsA + remA;
+
+                    if (finalH <= maxGoals && finalA <= maxGoals) {
+                        const p = pInd * tau;
+                        rawMatrix[finalH][finalA] = p;
+                        totalMass += p;
+                    }
+                }
+            }
+
+            // Strict renormalization so sum of all probabilities = 1.000000
+            let probHome = 0, probDraw = 0, probAway = 0;
+            let probOver25 = 0, probBtts = 0, tailMass = 0;
+            let bestScore = { h: baseGoalsH, a: baseGoalsA, p: 0 };
+
+            for (let h = 0; h <= maxGoals; h++) {
+                for (let a = 0; a <= maxGoals; a++) {
+                    rawMatrix[h][a] = totalMass > 0 ? rawMatrix[h][a] / totalMass : 0;
+                    const p = rawMatrix[h][a];
+
+                    if (h > a) probHome += p;
+                    else if (h === a) probDraw += p;
+                    else probAway += p;
+
+                    if (h + a > 2.5) probOver25 += p;
+                    if (h >= 1 && a >= 1) probBtts += p;
+                    if (h > 5 || a > 5) tailMass += p;
+
+                    if (p > bestScore.p) {
+                        bestScore = { h, a, p };
+                    }
+                }
+            }
+
+            return {
+                matrix11x11: rawMatrix,
+                probHome,
+                probDraw,
+                probAway,
+                probOver25,
+                probUnder25: Math.max(0, 1 - probOver25),
+                probBtts,
+                tailMass,
+                bestScore
+            };
+        }
+
+        /**
+         * Old Naive 6x6 Unnormalized Model for Comparison
+         */
+        function computeNaive6x6Model(lH, lA, rho) {
+            let pH = 0, pD = 0, pA = 0, sum = 0;
+            for (let h = 0; h <= 5; h++) {
+                for (let a = 0; a <= 5; a++) {
+                    let tau = 1.0;
+                    if (h === 0 && a === 0) tau = 1 - lH * lA * rho;
+                    else if (h === 0 && a === 1) tau = 1 + lH * rho;
+                    else if (h === 1 && a === 0) tau = 1 + lA * rho;
+                    else if (h === 1 && a === 1) tau = 1 - rho;
+                    const p = poissonPMF(h, lH) * poissonPMF(a, lA) * tau;
+                    sum += p;
+                    if (h > a) pH += p;
+                    else if (h === a) pD += p;
+                    else pA += p;
+                }
+            }
+            return { pH, pD, pA, sum };
+        }
+
+        /*************************************************************************
+         * 5. UI RENDERING: 1X2 BARS, 6x6 HEATMAP & EV/KELLY CALCULATOR
+         *************************************************************************/
+        function updateDashboardUI(res, oldRes, oldLH, oldLA, newLH, newLA) {
+            const pH = (res.probHome * 100).toFixed(1);
+            const pD = (res.probDraw * 100).toFixed(1);
+            const pA = (res.probAway * 100).toFixed(1);
+
+            document.getElementById('probHomeText').textContent = `${pH}%`;
+            document.getElementById('probDrawText').textContent = `${pD}%`;
+            document.getElementById('probAwayText').textContent = `${pA}%`;
+
+            document.getElementById('barHome').style.width = `${pH}%`;
+            document.getElementById('barDraw').style.width = `${pD}%`;
+            document.getElementById('barAway').style.width = `${pA}%`;
+
+            document.getElementById('mostLikelyScoreBadge').textContent = `${res.bestScore.h} - ${res.bestScore.a} (${(res.bestScore.p * 100).toFixed(1)}%)`;
+
+            document.getElementById('probOver25').textContent = `${(res.probOver25 * 100).toFixed(1)}%`;
+            document.getElementById('fairOddsOver25').textContent = `Fair Odds: ${(1 / Math.max(0.01, res.probOver25)).toFixed(2)}`;
+
+            document.getElementById('probUnder25').textContent = `${(res.probUnder25 * 100).toFixed(1)}%`;
+            document.getElementById('fairOddsUnder25').textContent = `Fair Odds: ${(1 / Math.max(0.01, res.probUnder25)).toFixed(2)}`;
+
+            document.getElementById('probBttsYes').textContent = `${(res.probBtts * 100).toFixed(1)}%`;
+            document.getElementById('fairOddsBtts').textContent = `Fair Odds: ${(1 / Math.max(0.01, res.probBtts)).toFixed(2)}`;
+
+            document.getElementById('probTailMass').textContent = `${(res.tailMass * 100).toFixed(2)}%`;
+
+            // Model Delta Comparison Panel
+            document.getElementById('oldModelSummary').innerHTML = `&lambda;<sub>H</sub>: ${oldLH.toFixed(2)} | &lambda;<sub>A</sub>: ${oldLA.toFixed(2)}`;
+            document.getElementById('oldModel1X2').textContent = `1: ${(oldRes.pH * 100).toFixed(1)}% | X: ${(oldRes.pD * 100).toFixed(1)}% | 2: ${(oldRes.pA * 100).toFixed(1)}% (Σ=${(oldRes.sum * 100).toFixed(1)}%)`;
+
+            document.getElementById('newModelSummary').innerHTML = `&lambda;<sub>H</sub>: ${newLH.toFixed(2)} | &lambda;<sub>A</sub>: ${newLA.toFixed(2)}`;
+            document.getElementById('newModel1X2').textContent = `1: ${pH}% | X: ${pD}% | 2: ${pA}% (Σ=100.0%)`;
+
+            const leakedMass = Math.abs(100 - oldRes.sum * 100).toFixed(2);
+            const homeDelta = Math.abs(res.probHome * 100 - oldRes.pH * 100).toFixed(1);
+            document.getElementById('deltaExplanation').innerHTML = `Mengoreksi <span class="text-white font-mono">${homeDelta}%</span> bias Win Probability & mengembalikan <span class="text-emerald-400 font-mono">${leakedMass}%</span> probabilitas skor tinggi (6+ gol).`;
+        }
+
+        function render6x6Heatmap(matrix, minH = 0, minA = 0) {
+            const container = document.getElementById('scoreMatrixContainer');
+            let maxP = 0.001;
+            for (let h = 0; h <= 5; h++) {
+                for (let a = 0; a <= 5; a++) {
+                    if (matrix[h][a] > maxP) maxP = matrix[h][a];
+                }
+            }
+
+            let html = `<div class="grid grid-cols-7 gap-1.5 text-center font-mono text-xs">`;
+            // Header Row
+            html += `<div class="p-2 rounded-lg bg-slate-900/90 text-slate-400 text-[10px] flex items-center justify-center font-bold">H \\ A</div>`;
+            for (let a = 0; a <= 5; a++) {
+                html += `<div class="p-2 rounded-lg bg-slate-900/90 text-cyan-400 font-bold">Away ${a}</div>`;
+            }
+
+            // Matrix Rows 0..5
+            for (let h = 0; h <= 5; h++) {
+                html += `<div class="p-2 rounded-lg bg-slate-900/90 text-emerald-400 font-bold flex items-center justify-center">Home ${h}</div>`;
+                for (let a = 0; a <= 5; a++) {
+                    const p = matrix[h][a];
+                    const pct = (p * 100).toFixed(1);
+                    const intensity = Math.min(1, p / maxP);
+
+                    // Impossible score in live match if below current goals
+                    if (h < minH || a < minA) {
+                        html += `
+                            <div class="p-2 rounded-lg bg-slate-950/40 border border-slate-900 text-slate-700 flex flex-col items-center justify-center">
+                                <span class="text-[10px]">${h}-${a}</span>
+                                <span class="text-[10px]">—</span>
+                            </div>`;
+                        continue;
+                    }
+
+                    // Color coding by outcome (Home Win = Emerald, Draw = Indigo/Slate, Away Win = Cyan)
+                    let bgStyle = '';
+                    let borderClass = 'border-slate-800';
+                    if (h > a) {
+                        bgStyle = `background-color: rgba(16, 185, 129, ${(0.08 + intensity * 0.55).toFixed(2)});`;
+                        if (intensity > 0.7) borderClass = 'border-emerald-400/60';
+                    } else if (h === a) {
+                        bgStyle = `background-color: rgba(99, 102, 241, ${(0.08 + intensity * 0.55).toFixed(2)});`;
+                        if (intensity > 0.7) borderClass = 'border-indigo-400/60';
+                    } else {
+                        bgStyle = `background-color: rgba(6, 182, 212, ${(0.08 + intensity * 0.55).toFixed(2)});`;
+                        if (intensity > 0.7) borderClass = 'border-cyan-400/60';
+                    }
+
+                    html += `
+                        <div class="matrix-cell p-2 rounded-lg border ${borderClass} flex flex-col items-center justify-center cursor-default" style="${bgStyle}">
+                            <span class="text-[10px] text-slate-300">${h} - ${a}</span>
+                            <span class="font-bold text-white text-xs mt-0.5">${pct}%</span>
+                        </div>`;
+                }
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        /*************************************************************************
+         * 6. EXPECTED VALUE (EV%), MARGIN STRIPPER & KELLY CRITERION
+         *************************************************************************/
+        function calculateEVAndKelly() {
+            const odds1 = parseFloat(document.getElementById('oddsHomeInput').value) || 1.95;
+            const oddsX = parseFloat(document.getElementById('oddsDrawInput').value) || 3.50;
+            const odds2 = parseFloat(document.getElementById('oddsAwayInput').value) || 3.80;
+            const oddsOver = parseFloat(document.getElementById('oddsOverInput').value) || 1.85;
+            const kellyFrac = parseFloat(document.getElementById('kellyFractionSelect').value) || 0.25;
+
+            // Calculate Bookmaker Overround (Margin) on 1X2
+            const impliedSum = (1 / odds1) + (1 / oddsX) + (1 / odds2);
+            const marginPct = ((impliedSum - 1) * 100).toFixed(2);
+            document.getElementById('bookieMarginBadge').textContent = `${marginPct}%`;
+
+            const markets = [
+                { name: 'Home Win (1)', prob: latestModelOutput.probHome, odds: odds1 },
+                { name: 'Draw (X)', prob: latestModelOutput.probDraw, odds: oddsX },
+                { name: 'Away Win (2)', prob: latestModelOutput.probAway, odds: odds2 },
+                { name: 'Over 2.5 Goals', prob: latestModelOutput.probOver25, odds: oddsOver }
+            ];
+
+            const tbody = document.getElementById('evTableBody');
+            tbody.innerHTML = '';
+
+            markets.forEach(m => {
+                const fairOdds = 1 / Math.max(0.005, m.prob);
+                const ev = ((m.prob * m.odds) - 1) * 100;
+                const b = m.odds - 1;
+                const q = 1 - m.prob;
+                const rawKelly = b > 0 ? ((b * m.prob) - q) / b : 0;
+                const recStake = Math.max(0, rawKelly * kellyFrac * 100);
+
+                const isPositive = ev > 0;
+                const evBadge = isPositive
+                    ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">+${ev.toFixed(2)}% (VALUE)</span>`
+                    : `<span class="text-slate-500">${ev.toFixed(2)}%</span>`;
+
+                const stakeBadge = isPositive
+                    ? `<span class="text-emerald-400 font-bold">${recStake.toFixed(2)}% Bankroll</span>`
+                    : `<span class="text-slate-600">0.00% (Skip)</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/50 transition';
+                tr.innerHTML = `
+                    <td class="py-2.5 px-2 font-semibold text-white">${m.name}</td>
+                    <td class="py-2.5 px-2 text-slate-300">${(m.prob * 100).toFixed(1)}%</td>
+                    <td class="py-2.5 px-2 text-cyan-400">${fairOdds.toFixed(2)}</td>
+                    <td class="py-2.5 px-2 text-amber-300">${m.odds.toFixed(2)}</td>
+                    <td class="py-2.5 px-2">${evBadge}</td>
+                    <td class="py-2.5 px-2 text-right">${stakeBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /*************************************************************************
+         * 7. 10,000 MONTE CARLO STOCHASTIC SIMULATOR
+         *************************************************************************/
+        function samplePoissonKnuth(lambda) {
+            const L = Math.exp(-lambda);
+            let k = 0;
+            let p = 1.0;
+            do {
+                k++;
+                p *= Math.random();
+            } while (p > L);
+            return k - 1;
+        }
+
+        function runMonteCarloSimulation(iterations = 10000, showAnimation = false) {
+            const remH = Math.max(0.02, latestModelOutput.lambdaHome - liveScore.home);
+            const remA = Math.max(0.02, latestModelOutput.lambdaAway - liveScore.away);
+
+            let winsH = 0, draws = 0, winsA = 0, over25 = 0;
+
+            for (let i = 0; i < iterations; i++) {
+                const gH = liveScore.home + samplePoissonKnuth(remH);
+                const gA = liveScore.away + samplePoissonKnuth(remA);
+
+                if (gH > gA) winsH++;
+                else if (gH === gA) draws++;
+                else winsA++;
+
+                if (gH + gA > 2.5) over25++;
+            }
+
+            const mcH = ((winsH / iterations) * 100).toFixed(1);
+            const mcD = ((draws / iterations) * 100).toFixed(1);
+            const mcA = ((winsA / iterations) * 100).toFixed(1);
+            const mcO = ((over25 / iterations) * 100).toFixed(1);
+
+            const box = document.getElementById('monteCarloResultText');
+            box.innerHTML = `1: <span class="text-emerald-400">${mcH}%</span> | X: <span class="text-white">${mcD}%</span> | 2: <span class="text-cyan-400">${mcA}%</span> | O2.5: <span class="text-amber-300">${mcO}%</span> (Konvergen &plusmn;0.4%)`;
+            if (showAnimation) {
+                const container = document.getElementById('monteCarloBox');
+                container.classList.add('ring-2', 'ring-indigo-500');
+                setTimeout(() => container.classList.remove('ring-2', 'ring-indigo-500'), 700);
+            }
+        }
+
+        /*************************************************************************
+         * 8. INTERACTIVE HELPERS (LIVE SCORE STEPPER & MODALS)
+         *************************************************************************/
+        function adjustLiveScore(side, delta) {
+            liveScore[side] = Math.max(0, Math.min(9, liveScore[side] + delta));
+            document.getElementById('liveScoreHome').textContent = liveScore.home;
+            document.getElementById('liveScoreAway').textContent = liveScore.away;
+            if ((liveScore.home > 0 || liveScore.away > 0) && parseInt(document.getElementById('liveMinuteSlider').value, 10) === 0) {
+                document.getElementById('liveMinuteSlider').value = 25;
+            }
+            recalculateModel();
+        }
+
+        function toggleModal(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('hidden');
+        }
+
+        function toggleElement(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
